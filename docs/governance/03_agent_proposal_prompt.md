@@ -47,10 +47,11 @@ contract map for review before encoding actions.
 ## Contract Discovery
 
 Follow the [Contract Registry guide](../for-agents/01_contract-registry.md)
-for the current Protocol Visualizer Indexer endpoint and query. Check `/status`
-for coverage and freshness, then query enabled contracts on the intended chain.
-Use the result to discover Kernel modules and policies, not as a substitute for
-live contract and permission checks.
+for the current Ethereum Protocol Visualizer API route. Check the response schema,
+chain and generation time, then inspect enabled Ethereum contracts. For other
+chains, verify a supported route and response before relying on the API. Use the
+result to discover Kernel modules and policies, not as a substitute for live
+contract and permission checks.
 
 For governance work, identify:
 

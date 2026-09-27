@@ -100,21 +100,13 @@ _pushAction(
 
 When referencing addresses, prefer the registry over hardcoded addresses. Use lowercase, dash-separated keys such as `olympus-policy-example`, `external-token-usds`, or `olympus-multisig-dao`.
 
-For current Olympus Kernel contracts, follow the [Contract Registry guide](../for-agents/01_contract-registry.md): check indexer status and query enabled contracts, then corroborate the target and permissions on-chain. The registry is a discovery aid, not proof that a proposed call is authorized.
+For current Olympus Kernel contracts, follow the [Contract Registry guide](../for-agents/01_contract-registry.md): check the live API response and enabled Ethereum contracts, then corroborate the target and permissions on-chain. The registry is a discovery aid, not proof that a proposed call is authorized.
 
 ### 3. Add Tests
 
 Create tests in `src/test/proposals/`. The tests should import the proposal and run it against a mainnet fork.
 
-A minimal test should prove setup works:
-
-```solidity
-function testProposal() public {
-    assertTrue(true);
-}
-```
-
-Useful tests go further and verify the post-proposal state that tokenholders care about. For example, assert changed parameters, permissions, enabled flags, balances, or market configuration.
+Tests must verify the post-proposal state that tokenholders care about, not merely that the test setup runs. For example, assert changed parameters, permissions, enabled flags, balances, or market configuration. Use a current proposal test with comparable actions as the starting pattern.
 
 ### 4. Open a Review PR
 
