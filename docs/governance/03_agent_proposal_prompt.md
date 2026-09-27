@@ -46,16 +46,11 @@ contract map for review before encoding actions.
 
 ## Contract Discovery
 
-Use the Protocol Visualizer as the first pass for active Olympus Kernel
-contracts. It reflects the currently installed Kernel modules and policies.
-
-```bash
-curl -sG "https://protocol-visualizer-api.olympusdao.finance/graphql" \
-  --data-urlencode 'query={ Contract(where: { chainId: { _eq: 1 }, isEnabled: { _eq: true } }, limit: 100) { chainId address name version contractType isEnabled } }'
-```
-
-Use this result to identify active modules and policies. Always filter for
-`isEnabled: true` when looking for the current active set.
+Follow the [Contract Registry guide](../for-agents/01_contract-registry.md)
+for the current Protocol Visualizer Indexer endpoint and query. Check `/status`
+for coverage and freshness, then query enabled contracts on the intended chain.
+Use the result to discover Kernel modules and policies, not as a substitute for
+live contract and permission checks.
 
 For governance work, identify:
 
@@ -67,7 +62,8 @@ For governance work, identify:
 - Target contracts: policies, modules, or external contracts changed by the
   proposal
 
-Then cross-check addresses against `olympus-v3/src/proposals/addresses.json`.
+Then cross-check addresses against `olympus-v3/src/proposals/addresses.json`
+and the live contract state.
 If an address is missing, add it using the repository's naming conventions. Do
 not rely on stale proposal code without verifying that the target is still
 active or intentionally legacy.
@@ -87,73 +83,12 @@ action, list test commands and results, and call out assumptions.
 
 ## Solidity Proposal Shape
 
-Use the repository's proposal simulator pattern.
-
-```solidity
-// SPDX-License-Identifier: MIT
-pragma solidity >=0.8.20;
-
-import {Addresses} from "proposal-sim/addresses/Addresses.sol";
-import {GovernorBravoProposal} from "proposal-sim/proposals/OlympusGovernorBravoProposal.sol";
-import {ProposalScript} from "src/proposals/ProposalScript.sol";
-
-contract ExampleProposal is GovernorBravoProposal {
-    function id() public pure override returns (uint256) {
-        return 0;
-    }
-
-    function name() public pure override returns (string memory) {
-        return "Example Proposal";
-    }
-
-    function description() public pure override returns (string memory) {
-        return
-            string.concat(
-                "# Example Proposal\n\n",
-                "## Summary\n\n",
-                "Describe the proposal intent.\n\n",
-                "## Actions\n\n",
-                "1. Describe each Governor action.\n"
-            );
-    }
-
-    function _deploy(Addresses addresses, address deployer) internal override {
-        // Cache Kernel, modules, policies, or pre-state needed for validation.
-    }
-
-    function _build(Addresses addresses) internal override {
-        address target = addresses.getAddress("olympus-policy-example");
-
-        _pushAction(
-            target,
-            abi.encodeWithSelector(ExampleTarget.setParameter.selector, 123),
-            "Set example parameter"
-        );
-    }
-
-    function _run(Addresses addresses, address) internal override {
-        _simulateActions(
-            addresses.getAddress("olympus-kernel"),
-            addresses.getAddress("olympus-governor"),
-            addresses.getAddress("olympus-legacy-gohm"),
-            addresses.getAddress("proposer")
-        );
-    }
-
-    function _validate(Addresses addresses, address) internal view override {
-        address target = addresses.getAddress("olympus-policy-example");
-
-        require(
-            ExampleTarget(target).parameter() == 123,
-            "Example parameter was not updated"
-        );
-    }
-}
-
-contract ExampleProposalScript is ProposalScript {
-    constructor() ProposalScript(new ExampleProposal()) {}
-}
-```
+Use the current proposal simulator pattern in
+[`olympus-v3/src/proposals/`](https://github.com/OlympusDAO/olympus-v3/tree/master/src/proposals),
+including its `ProposalScript` wrapper. Select a recent proposal with comparable
+actions rather than copying a generic Solidity template. Build typed calldata,
+simulate the exact actions and assert the intended post-state. Check the current
+repository interfaces and compile before presenting any code as usable.
 
 Prefer state-aware actions. If the desired state already exists, avoid pushing
 unnecessary actions. If the proposal must reconcile pending state, inspect both
@@ -161,30 +96,10 @@ current and pending values and validate the final intended condition.
 
 ## Test Shape
 
-Use a mainnet fork and simulate the proposal.
-
-```solidity
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.0;
-
-import {ProposalTest} from "./ProposalTest.sol";
-import {ExampleProposal} from "src/proposals/ExampleProposal.sol";
-
-contract ExampleProposalTest is ProposalTest {
-    uint256 public constant BLOCK = 25152621;
-
-    function setUp() public virtual {
-        vm.createSelectFork(vm.envString("RPC_URL"), BLOCK);
-
-        ExampleProposal proposal = new ExampleProposal();
-
-        hasBeenSubmitted = false;
-
-        _setupSuite(address(proposal));
-        _simulateProposal();
-    }
-}
-```
+Use the current `ProposalTest` pattern in
+[`olympus-v3/src/test/proposals/`](https://github.com/OlympusDAO/olympus-v3/tree/master/src/test/proposals).
+Pin a real mainnet fork block that can exercise the intended pre-state and
+simulate the proposal through the repository's test suite.
 
 Tests should assert the intended post-state, not only that setup succeeds.
 
@@ -207,6 +122,10 @@ Before any broadcast:
 4. Dry-run the exact submission command with broadcasting disabled.
 5. Present the final payload for human approval.
 
+Read the current `submitProposal.sh` usage before constructing the command. It
+requires either `--account <cast-wallet>` or `--ledger <mnemonic-index>` in
+addition to the proposal file, wrapper contract and chain.
+
 For script-based proposals, submit through the script wrapper contract, not the
 proposal contract directly.
 
@@ -214,8 +133,8 @@ proposal contract directly.
 src/scripts/proposals/submitProposal.sh \
   --file src/proposals/ExampleProposal.sol \
   --contract ExampleProposalScript \
+  --account "$PROPOSER_ACCOUNT" \
   --chain "$RPC_URL" \
-  --env .env.proposer \
   --broadcast false
 ```
 

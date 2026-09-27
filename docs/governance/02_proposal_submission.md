@@ -7,7 +7,7 @@ sidebar_label: Submission Guidelines
 
 # Submission Guidelines
 
-Olympus On-Chain Governance (OCG) proposals are executable transactions. A strong submission should make the intended protocol change clear, prove the calldata is correct, and give tokenholders enough time and context to review it before voting.
+Olympus On-Chain Governance (OCG) proposals are executable transactions. A strong submission makes the intended protocol change clear, proves the calldata and post-state and gives tokenholders time to review it before voting. This page covers Governor Bravo submissions; Snapshot signaling proposals can follow a different execution path.
 
 :::info
 Before submitting a new proposal, review the [Governance intro](./00_governance.md) and [Proposal lifecycle](./proposal_lifecycle). The lifecycle page explains activation, voting, queueing, and execution after the initial submission.
@@ -28,18 +28,18 @@ To submit a new OCG proposal, a proposer calls Governor Bravo's `propose()` func
 
 ### Minimum Voting Power
 
-The proposer must hold, or be delegated, at least `proposalThreshold` of the total gOHM supply. The threshold is calculated by `getProposalThresholdVotes()`:
+The proposer must have more delegated gOHM votes than the current proposal threshold. [Governor Bravo](https://github.com/OlympusDAO/olympus-v3/blob/master/src/external/governance/GovernorBravoDelegate.sol) calculates the threshold as follows:
 
 ```solidity
 function getProposalThresholdVotes() public view returns (uint256) {
-    return (gohm.totalSupply() * proposalThreshold) / 100_000;
+    return (gohm.totalSupply() * proposalThreshold) / 100_000_000;
 }
 ```
 
-The proposer's votes are checked during `propose()`, `queue()`, and `execute()`. Delegated voting power must remain in place through the full proposal lifecycle.
+The proposer's votes are checked during `propose()`, `queue()` and `execute()`. Delegated voting power must remain in place through the full proposal lifecycle.
 
 :::info
-The current `proposalThreshold` is 0.017% of the total gOHM supply. Check the live Governor contract before submitting, because the exact gOHM amount changes with supply.
+Read `getProposalThresholdVotes()` and the proposer's prior votes on the live Governor contract before submission. Do not rely on a fixed percentage or a current-supply estimate copied from this page.
 :::
 
 :::tip
@@ -100,7 +100,7 @@ _pushAction(
 
 When referencing addresses, prefer the registry over hardcoded addresses. Use lowercase, dash-separated keys such as `olympus-policy-example`, `external-token-usds`, or `olympus-multisig-dao`.
 
-For current Olympus Kernel contracts, use the [Protocol Visualizer](https://protocol-visualizer.olympusdao.finance/) or its GraphQL API to verify the active contract set before adding addresses. The visualizer reflects installed Kernel modules and policies, which helps reviewers confirm that proposal actions target the intended contracts.
+For current Olympus Kernel contracts, follow the [Contract Registry guide](../for-agents/01_contract-registry.md): check indexer status and query enabled contracts, then corroborate the target and permissions on-chain. The registry is a discovery aid, not proof that a proposed call is authorized.
 
 ### 3. Add Tests
 
@@ -140,7 +140,7 @@ Before submission, verify:
 
 ### 6. Dry-Run Submission
 
-Use the repository's proposal scripts or Foundry directly to dry-run the exact submission path before broadcasting.
+Use the repository's current proposal script to dry-run the exact submission path before broadcasting. It requires either a named Cast wallet with `--account` or a Ledger index with `--ledger`; the example uses a named wallet.
 
 For script-based proposals, submit through the wrapper script contract, not the proposal contract directly. The wrapper is what prepares the proposal script environment for `forge script`.
 
@@ -150,8 +150,8 @@ Example shape:
 src/scripts/proposals/submitProposal.sh \
   --file src/proposals/MyProposal.sol \
   --contract MyProposalScript \
+  --account "$PROPOSER_ACCOUNT" \
   --chain "$RPC_URL" \
-  --env .env.proposer \
   --broadcast false
 ```
 
@@ -159,14 +159,14 @@ Review the printed targets, values, calldata, description, proposer address, and
 
 ### 7. Broadcast
 
-After review, broadcast the same command with broadcasting enabled:
+After the proposal author and reviewers approve the final payload, broadcast the same reviewed command with broadcasting enabled:
 
 ```bash
 src/scripts/proposals/submitProposal.sh \
   --file src/proposals/MyProposal.sol \
   --contract MyProposalScript \
+  --account "$PROPOSER_ACCOUNT" \
   --chain "$RPC_URL" \
-  --env .env.proposer \
   --broadcast true
 ```
 
